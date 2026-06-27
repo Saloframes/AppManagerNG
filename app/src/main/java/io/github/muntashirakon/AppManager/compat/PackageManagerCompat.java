@@ -241,10 +241,10 @@ public final class PackageManagerCompat {
             Method method;
             Object[] args;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                method = pm.getClass().getMethod(methodName, long.class, int.class);
+                method = IPackageManager.class.getMethod(methodName, long.class, int.class);
                 args = new Object[]{(long) flags, userId};
             } else {
-                method = pm.getClass().getMethod(methodName, int.class, int.class);
+                method = IPackageManager.class.getMethod(methodName, int.class, int.class);
                 args = new Object[]{flags, userId};
             }
             return method.invoke(pm, args);
