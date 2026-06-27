@@ -114,7 +114,7 @@ public class Android17BehaviorContractTest {
                         + "reflective compatibility helper",
                 contents.contains("getInstalledListForAndroid17(pm, \"getInstalledApplications\""));
         assertTrue("Reflective helper must resolve the method by name/params (return type agnostic)",
-                contents.contains("pm.getClass().getMethod(methodName, long.class, int.class)"));
+                contents.contains("IPackageManager.class.getMethod(methodName, long.class, int.class)"));
         assertTrue("Reflective helper must unwrap any ParceledListSlice subclass returned by Android 17",
                 contents.contains("result instanceof ParceledListSlice"));
         assertTrue("Android 17 install-list path must be gated on API 37",
