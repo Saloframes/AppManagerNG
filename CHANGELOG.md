@@ -11,6 +11,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   auth flow or process death restore (reported on Xiaomi Redmi M2006C3MNG, API 29).
 
 ### Added
+- `PR Release APK` workflow (`.github/workflows/pr-release-apk.yml`) builds a signed
+  release APK and uploads it as a downloadable workflow artifact, on demand
+  (`workflow_dispatch`) or when a pull request carries the `build-apk` label. Signs
+  with the configured release key when secrets are present, otherwise an ephemeral CI
+  key (clearly flagged as not the official release key). Separate from the canonical
+  tag-triggered `release.yml` publish path.
 - Snapshot import now shows a preview dialog with source version, date, schema, and
   per-section toggles (preferences, profiles, rules, tags, operation history). Users
   select which sections to restore before importing.
