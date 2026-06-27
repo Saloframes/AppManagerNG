@@ -6,6 +6,13 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## Unreleased
 
 ### Fixed
+- Android 17 (API 37) empty app list and settings crash: Android 17 renamed the
+  `IPackageManager.getInstalledPackages`/`getInstalledApplications` return type from
+  `ParceledListSlice` to dedicated subclasses (`PackageInfoList`/`ApplicationInfoList`),
+  so the direct AIDL call threw `NoSuchMethodError`. This left the app list empty and
+  crashed screens whose callers only caught `Exception` (e.g. About device). The compat
+  layer now resolves these methods reflectively on API 37+ and unwraps any
+  `ParceledListSlice` subclass (upstream App Manager #1948, Shizuku #1965).
 - Settings preference navigation now guards against null fragment view, preventing
   crash on devices where the view is not yet created or has been destroyed during
   auth flow or process death restore (reported on Xiaomi Redmi M2006C3MNG, API 29).
