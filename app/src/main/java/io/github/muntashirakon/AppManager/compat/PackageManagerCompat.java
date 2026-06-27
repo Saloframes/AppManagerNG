@@ -243,7 +243,7 @@ public final class PackageManagerCompat {
                                                             int flags, @UserIdInt int userId)
             throws RemoteException {
         try {
-            Method method = pm.getClass().getMethod(methodName, long.class, int.class);
+            Method method = IPackageManager.class.getMethod(methodName, long.class, int.class);
             Object result = method.invoke(pm, (long) flags, userId);
             List<?> list = null;
             if (result instanceof ParceledListSlice) {
