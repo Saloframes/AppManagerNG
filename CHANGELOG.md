@@ -6,6 +6,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## Unreleased
 
 ### Fixed
+- Settings > Privacy no longer crashes on open. Three monitor toggles used
+  `app:key` values (`permission_change_monitor`, `signing_cert_change_monitor`,
+  `app_change_auditor`) that are not registered in `AppPref`, so
+  `SettingsDataStore` threw `IllegalArgumentException: Invalid key` while
+  inflating the screen. Keys now match the registered `enable_*` names.
 - Installed application list now loads on Android 17 (API 37). The hidden
   `IPackageManager.getInstalled{Packages,Applications}` return type change made the
   compiled `ParceledListSlice` call fail with a linkage error, leaving the app list
