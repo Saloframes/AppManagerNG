@@ -50,6 +50,8 @@ import androidx.annotation.WorkerThread;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -174,6 +176,10 @@ public final class PackageManagerCompat {
                                                                   int flags,
                                                                   @UserIdInt int userId) {
         try {
+            if (Build.VERSION.SDK_INT >= ANDROID_17) {
+                // Android 17 changed the return type (see getInstalledListForAndroid17).
+                return getInstalledListForAndroid17(pm, "getInstalledPackages", flags, userId);
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 return pm.getInstalledPackages((long) flags, userId).getList();
             }
@@ -197,10 +203,70 @@ public final class PackageManagerCompat {
     @WorkerThread
     public static List<ApplicationInfo> getInstalledApplications(@NonNull IPackageManager pm, int flags,
                                                                  @UserIdInt int userId) throws RemoteException {
+        if (Build.VERSION.SDK_INT >= ANDROID_17) {
+            // Android 17 changed the return type (see getInstalledListForAndroid17).
+            return getInstalledListForAndroid17(pm, "getInstalledApplications", flags, userId);
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             return pm.getInstalledApplications((long) flags, userId).getList();
         }
         return pm.getInstalledApplications(flags, userId).getList();
+    }
+
+    // Android 17 (API 37, "Cinnamon Bun"). Kept as a literal because the codebase
+    // gates Android 17 behavior changes on the raw SDK level and does not depend on
+    // the named Build.VERSION_CODES constant being present on every build SDK.
+    private static final int ANDROID_17 = 37;
+
+    /**
+     * Android 17 (API 37) replaced the {@link ParceledListSlice} return type of
+     * {@link IPackageManager#getInstalledPackages(long, int)} and
+     * {@link IPackageManager#getInstalledApplications(long, int)} with dedicated
+     * {@code ParceledListSlice} subclasses ({@code PackageInfoList} /
+     * {@code ApplicationInfoList}). A direct AIDL call compiled against
+     * {@code ParceledListSlice} resolves to a method descriptor that no longer
+     * exists on the device, so it throws {@link NoSuchMethodError} — surfacing as
+     * an empty app list, and crashing callers that only catch {@link Exception}
+     * rather than {@link Error} (e.g. the device-info screen). See upstream App
+     * Manager #1948 and Shizuku #1965.
+     * <p>
+     * Resolve the method reflectively — reflective lookup is keyed on the method
+     * name and parameter types and ignores the return type — then unwrap whichever
+     * {@code ParceledListSlice} subclass (or, defensively, plain {@link List})
+     * comes back. Only reached on API 37+, which always provides the {@code long}
+     * flags overload (Android 13+).
+     */
+    @NonNull
+    @SuppressWarnings("unchecked")
+    private static <T> List<T> getInstalledListForAndroid17(@NonNull IPackageManager pm,
+                                                            @NonNull String methodName,
+                                                            int flags, @UserIdInt int userId)
+            throws RemoteException {
+        try {
+            Method method = pm.getClass().getMethod(methodName, long.class, int.class);
+            Object result = method.invoke(pm, (long) flags, userId);
+            List<?> list = null;
+            if (result instanceof ParceledListSlice) {
+                list = ((ParceledListSlice<?>) result).getList();
+            } else if (result instanceof List) {
+                list = (List<?>) result;
+            }
+            return list != null ? (List<T>) list : Collections.emptyList();
+        } catch (InvocationTargetException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof RemoteException) {
+                throw (RemoteException) cause;
+            }
+            if (cause instanceof RuntimeException) {
+                throw (RuntimeException) cause;
+            }
+            if (cause instanceof Error) {
+                throw (Error) cause;
+            }
+            throw new IllegalStateException("Could not invoke " + methodName + " for user " + userId, cause);
+        } catch (NoSuchMethodException | IllegalAccessException e) {
+            throw new IllegalStateException("Could not resolve " + methodName + " for user " + userId, e);
+        }
     }
 
     @NonNull

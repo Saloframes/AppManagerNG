@@ -98,6 +98,31 @@ public class Android17BehaviorContractTest {
     }
 
     @Test
+    public void installedPackageAndApplicationListsTolerateAndroid17ReturnType() throws Exception {
+        Path source = findProjectRoot().resolve(
+                "app/src/main/java/io/github/muntashirakon/AppManager/compat/PackageManagerCompat.java");
+        String contents = new String(Files.readAllBytes(source), StandardCharsets.UTF_8);
+
+        // Android 17 (API 37) renamed the IPackageManager return type from
+        // ParceledListSlice to PackageInfoList/ApplicationInfoList. A direct AIDL call
+        // throws NoSuchMethodError (empty app list + settings crash). The compat layer
+        // must resolve the method reflectively and unwrap any ParceledListSlice subclass.
+        assertTrue("Android 17 install-list path must route getInstalledPackages through the "
+                        + "reflective compatibility helper",
+                contents.contains("getInstalledListForAndroid17(pm, \"getInstalledPackages\""));
+        assertTrue("Android 17 install-list path must route getInstalledApplications through the "
+                        + "reflective compatibility helper",
+                contents.contains("getInstalledListForAndroid17(pm, \"getInstalledApplications\""));
+        assertTrue("Reflective helper must resolve the method by name/params (return type agnostic)",
+                contents.contains("pm.getClass().getMethod(methodName, long.class, int.class)"));
+        assertTrue("Reflective helper must unwrap any ParceledListSlice subclass returned by Android 17",
+                contents.contains("result instanceof ParceledListSlice"));
+        assertTrue("Android 17 install-list path must be gated on API 37",
+                contents.contains("Build.VERSION.SDK_INT >= ANDROID_17")
+                        && contents.contains("ANDROID_17 = 37"));
+    }
+
+    @Test
     public void rootServiceResourcesStaticFinalHackStaysBelowAndroid17() throws Exception {
         Path source = findProjectRoot().resolve(
                 "server/src/main/java/io/github/muntashirakon/AppManager/server/RootServiceMain.java");
